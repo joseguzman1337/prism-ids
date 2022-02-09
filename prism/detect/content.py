@@ -107,6 +107,11 @@ class ContentModifiers(NamedTuple):
 
         return self
 
+    def strip_fast_pattern(self) -> ContentModifiers:
+        if self.fast_pattern is None:
+            return self
+        return self._replace(fast_pattern=None)
+
     @property
     def relative(self) -> bool:
         return self.distance is not None or self.within is not None
@@ -361,6 +366,9 @@ class Content(BufferContentMatch, opt_name='content'):
 
     def as_absolute(self) -> Content:
         return self.with_mods(self.modifiers.as_absolute())
+
+    def strip_fast_pattern(self) -> Content:
+        return self.with_mods(self.modifiers.strip_fast_pattern())
 
     def exact(self) -> Content:
         return self.with_mods(

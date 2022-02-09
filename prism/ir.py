@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, FrozenSet, Dict, Any
+from typing import Any, Dict, FrozenSet, Tuple
 from warnings import warn
 from dataclasses import dataclass
 from urllib.parse import quote

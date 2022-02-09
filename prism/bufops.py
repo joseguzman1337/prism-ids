@@ -6,7 +6,7 @@ from operator import or_
 from .sigmatch import BufferMatch
 from .sticky_buffer import StickyBuffer
 from .errors import SemanticError
-from .partition import copartition
+from .partition import partition, copartition
 from .irgen import irgen_content, ContentIR
 from . import detect
 
@@ -72,19 +72,23 @@ class BufOps(NamedTuple):
 
     buf: StickyBuffer
     size_constraint: Optional[detect.BufferSize]
+    fast_pattern: Optional[BufferMatch]
     content_opts: tuple[BufferMatch, ...]
 
     def irgen(self) -> ContentIR:
         return irgen_content(
             self.buf,
             self.size_constraint,
+            self.fast_pattern,
             self.content_opts,
         )
 
     def print(self) -> None:
-        (_, size_constraint, opts) = self
+        (_, size_constraint, fp, opts) = self
         if size_constraint:
             print(f' size-constraint: {size_constraint}')
+        if fp:
+            print(f' fast-pattern: {fp}')
         for opt in opts:
             print(f' {type(opt).__name__}: {opt}')
 
@@ -117,7 +121,7 @@ class BufOps(NamedTuple):
         # exact-match matches, then we've also checked the buffer size by
         # implication.
 
-        return BufOps(self.buf, None, tuple(fixedup))
+        return BufOps(self.buf, None, self.fast_pattern, tuple(fixedup))
 
     @staticmethod
     def _fold_relative(v: Sequence[BufferMatch],
@@ -145,6 +149,7 @@ class BufOps(NamedTuple):
     def _classify(cls,
                   opts: Sequence[BufferMatch],
                   ) -> tuple[Optional[detect.BufferSize],
+                             Optional[BufferMatch],
                              tuple[BufferMatch, ...]]:
         opts, s = copartition(detect.BufferSize, opts)
         if not s:
@@ -152,11 +157,39 @@ class BufOps(NamedTuple):
         else:
             buffer_size = reduce(or_, s)
 
-        opts = cls._fold_relative(opts)
+        def get_fp(opt: BufferMatch) -> Optional[detect.FastPattern]:
+            if not isinstance(opt, detect.Content):
+                return None
+            return opt.modifiers.fast_pattern
 
-        return buffer_size, tuple(opts)
+        def is_fp_only(opt: BufferMatch) -> bool:
+            fp = get_fp(opt)
+            if fp is None:
+                return False
+            return fp.only
+
+        opts, fp_only = partition(is_fp_only, opts)
+        fp_opts = tuple(filter(get_fp, opts))
+        if len(fp_only) + len(fp_opts) > 1:
+            raise SemanticError('Multiple fast patterns in rule')
+
+        if fp_only:
+            fp, = fp_only
+        elif fp_opts:
+            fp, = fp_opts
+        else:
+            fp = None
+
+        def strip_fp(opt: BufferMatch) -> BufferMatch:
+            if not isinstance(opt, detect.Content):
+                return opt
+            return opt.strip_fast_pattern()
+
+        opts = cls._fold_relative([strip_fp(opt) for opt in opts])
+
+        return buffer_size, fp, tuple(opts)
 
     @classmethod
     def new(cls, buf: StickyBuffer, opts: Sequence[BufferMatch]) -> BufOps:
-        size_constraint, content = cls._classify(opts)
-        return cls(buf, size_constraint, content)._fold_bufsz()
+        size_constraint, fp, content = cls._classify(opts)
+        return cls(buf, size_constraint, fp, content)._fold_bufsz()

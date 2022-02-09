@@ -461,9 +461,9 @@ class RtlGen:
             int,
             FrozenSet[StickyBuffer]
         ] = {
-            sid: frozenset(prog.bufs.keys())
+            sid: frozenset(prog.prefilters.keys())
             for (sid, prog) in sid_map.items()
-            if len(prog.bufs) > 1
+            if len(prog.prefilters) > 1
         }
 
         if not partials_map:
@@ -538,7 +538,7 @@ class RtlGen:
             sid = r.meta.sid
             sidmap[sid] = r
 
-            bufs = r.bufs
+            bufs = r.prefilters
 
             nr_bufs = len(bufs)
             assert nr_bufs
@@ -548,8 +548,7 @@ class RtlGen:
             else:
                 action = MatchAction.partial(sid)
 
-            for buf, vals in bufs.items():
-                v, = vals
+            for buf, v in bufs.items():
                 unit[buf][type(v)][v] |= action
 
         def freeze_matchdict(d: MatchDict) -> MatchMap:

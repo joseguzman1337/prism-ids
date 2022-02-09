@@ -188,11 +188,29 @@ _binhex_bufs: Mapping[StickyBuffer, Optional[int]] = {
 
 
 class ContentIR(NamedTuple):
+    fast_pattern: Optional[MPMPattern]
     content_opts: Tuple[BufOp, ...]
+
+    def select_fast_pattern(self) -> ContentIR:
+        if self.fast_pattern is not None:
+            return self
+
+        opts = self.content_opts
+        if not opts:
+            return self
+
+        pats = [x for x in opts if isinstance(x, Pattern)]
+
+        fp = max(pats, default=None, key=lambda x: len(x.content))
+        if fp is None:
+            return self
+
+        return self._replace(fast_pattern=fp)
 
 
 def _irgen_binhex(buf: StickyBuffer,
                   sc: Optional[detect.BufferSize],
+                  fast_pattern: Optional[BufferMatch],
                   opts: Sequence[BufferMatch],
                   ) -> Optional[ContentIR]:
     try:
@@ -205,21 +223,34 @@ def _irgen_binhex(buf: StickyBuffer,
             f'{buf.name}: buffer size {bufsz} not consistent with {sc}')
 
     return ContentIR(
+        None if fast_pattern is None else _convert_binhex(fast_pattern, bufsz),
         tuple(_convert_binhex(opt, bufsz) for opt in opts),
     )
 
 
 def irgen_content(buf: StickyBuffer,
                   size_constraint: Optional[detect.BufferSize],
+                  fast_pattern: Optional[BufferMatch],
                   opts: Sequence[BufferMatch],
                   ) -> ContentIR:
     if not opts:
         raise SemanticError('No opcode for size constraint only')
 
-    ret = _irgen_binhex(buf, size_constraint, opts)
+    ret = _irgen_binhex(buf, size_constraint, fast_pattern, opts)
     if ret is not None:
         return ret
 
+    if fast_pattern is None:
+        fp = None
+    else:
+        x = irgen_bufmatch(fast_pattern)
+
+        # We don't allow PCRE etc. to be a fast-pattern, per the rules of the
+        # suricata rule language
+        assert isinstance(x, MPMPattern)
+        fp = x
+
     return ContentIR(
+        fp,
         tuple(irgen_bufmatch(opt) for opt in opts),
     )

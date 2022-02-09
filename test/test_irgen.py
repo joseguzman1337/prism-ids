@@ -75,6 +75,16 @@ class Test_Irgen(IrgenTest):
             state=FlowState.ESTABLISHED,
         ))
 
+    def test_prefilters(self):
+        self.assertDictEqual(self.p._prefilters, {
+            StickyBuffer.TLS_SNI: OptionalDotPrefix(
+                content=b'.EVIL',
+                nocase=False,
+                start=False,
+                end=True,
+            ),
+        })
+
     def test_bufs(self):
         self.assertDictEqual(self.p._bufs, {
             StickyBuffer.TLS_SNI: (OptionalDotPrefix(
@@ -246,6 +256,16 @@ class Test_Relchain(IrgenTest):
         'classtype:targeted-activity;',
     )
 
+    def test_prefilters(self):
+        self.assertDictEqual(self.p._prefilters, {
+            StickyBuffer.TLS_CERT_SERIAL: Pattern(
+                content=b'\x65\x5d',
+                nocase=False,
+                start=True,
+                end=False,
+            ),
+        })
+
     def test_bufs(self):
         self.assertDictEqual(self.p._bufs, {
             StickyBuffer.TLS_CERT_SERIAL: (
@@ -327,6 +347,18 @@ class Test_StringSet(IrgenTest):
             direction=FlowDirection.SERVER,
             state=FlowState.ESTABLISHED,
         ))
+
+    def test_prefilters(self):
+        self.assertDictEqual(self.p._prefilters, {
+            StickyBuffer.TLS_CERT_ISSUER: Pattern(
+                content=b'O=www.virtuallythere.com',
+                nocase=False,
+            ),
+            StickyBuffer.TLS_CERT_SUBJECT: Pattern(
+                content=b'O=www.virtuallythere.com',
+                nocase=False,
+            ),
+        })
 
     def test_bufs(self):
         self.assertDictEqual(self.p._bufs, {

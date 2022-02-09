@@ -13,8 +13,10 @@ from .sticky_buffer import StickyBuffer
 from .errors import SemanticError
 from .sigmatch import SigMatch
 from .bufops import BufOps
-from .ir import BufOp, BufSize, BufRemaining, Opcode, PatternChain, Regex
-from .irgen import irgen
+from .ir import (
+    BufOp, BufSize, BufRemaining, MPMPattern, Opcode, PatternChain, Regex,
+)
+from .irgen import irgen, ContentIR
 
 __all__ = (
     'Program',
@@ -61,10 +63,16 @@ class RuleMatches(NamedTuple):
                 print(f' {type(opt).__name__}: {opt}')
         print()
 
-    def irgen(self) -> tuple[Mapping[StickyBuffer, tuple[BufOp, ...]],
+    def irgen(self) -> tuple[Mapping[StickyBuffer, MPMPattern],
+                             Mapping[StickyBuffer, tuple[BufOp, ...]],
                              tuple[Opcode, ...]]:
-        ir = {k: v.irgen() for k, v in self.bufs.items()}
+        def optimize(c: ContentIR) -> ContentIR:
+            return c.select_fast_pattern()
+
+        ir = {k: optimize(v.irgen()) for k, v in self.bufs.items()}
         return (
+            {k: v.fast_pattern for k, v in ir.items()
+             if v.fast_pattern is not None},
             {k: v.content_opts for k, v in ir.items()
              if v.content_opts is not None},
             tuple(irgen(opt) for opt in self.extra),
@@ -82,6 +90,7 @@ def _print_rule(r: Rule,
 
 class Program:
     __slots__ = (
+        '_prefilters',
         '_bufs',
         '_extra',
 
@@ -93,6 +102,7 @@ class Program:
         '_loc',
     )
 
+    _prefilters: Mapping[StickyBuffer, MPMPattern]
     _bufs: Mapping[StickyBuffer, tuple[BufOp, ...]]
     _extra: tuple[Opcode, ...]
 
@@ -104,6 +114,7 @@ class Program:
     _loc: Optional[Loc]
 
     def __init__(self,
+                 prefilters: Mapping[StickyBuffer, MPMPattern],
                  bufs: Mapping[StickyBuffer, tuple[BufOp, ...]],
                  extra: tuple[Opcode, ...],
 
@@ -114,6 +125,7 @@ class Program:
                  raw: Optional[str] = None,
                  loc: Optional[Loc] = None,
                  ) -> None:
+        self._prefilters = prefilters
         self._bufs = bufs
         self._extra = extra
 
@@ -158,13 +170,23 @@ class Program:
 
         try:
             rm = RuleMatches.from_parsed(parsed)
-            bufs, extra = rm.irgen()
+        except SemanticError as e:
+            if debug_err:
+                print(e)
+                _print_rule(r, parsed)
+            e.loc = r.loc
+            raise
+
+        try:
+            pre, bufs, extra = rm.irgen()
         except SemanticError as e:
             if debug_err:
                 print(e)
                 rm.print(r)
             e.loc = r.loc
             raise
+
+        assert pre
 
         if debug:
             _print_rule(r, parsed)
@@ -175,11 +197,14 @@ class Program:
         flow = r.flow
 
         return cls(
+            pre,
             bufs,
             extra,
+
             meta,
             head,
             flow,
+
             raw=r.raw,
             loc=r.loc,
         )
@@ -192,7 +217,7 @@ class Program:
         return p.determine(
             self._head.proto,
             self._flow,
-            self._bufs.keys(),
+            self._prefilters.keys() | self._bufs.keys(),
             loc=self._loc,
         )
 
@@ -209,8 +234,8 @@ class Program:
         return self._meta
 
     @property
-    def bufs(self) -> Mapping[StickyBuffer, tuple[BufOp, ...]]:
-        return self._bufs
+    def prefilters(self) -> Mapping[StickyBuffer, BufOp]:
+        return self._prefilters
 
     @property
     def json_dict(self) -> dict[str, Any]:  # pragma: nocover
@@ -218,9 +243,9 @@ class Program:
             'meta': self._meta.json_dict,
             'head': self._head.json_dict,
             'flow': self._flow.json_dict,
-            'bufs': {
-                k.value: [v.json_dict for v in bufs]
-                for k, bufs in self._bufs.items()
+            'prefilters': {
+                k.value: v.json_dict
+                for k, v in self._prefilters.items()
             },
         }
 
@@ -232,5 +257,8 @@ class Program:
             self._meta == other._meta,
             self._head == other._head,
             self._flow == other._flow,
+
+            self._prefilters == other._prefilters,
             self._bufs == other._bufs,
+            self._extra == other._extra,
         ))

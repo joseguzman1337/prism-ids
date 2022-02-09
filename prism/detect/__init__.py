@@ -1,6 +1,7 @@
 __all__ = (
     'Content',
     'ContentModifiers',
+    'FastPattern',
 
     'Pcre',
     'DataSize',
@@ -11,7 +12,7 @@ __all__ = (
     'RelChain',
 )
 
-from .content import Content, ContentModifiers
+from .content import Content, ContentModifiers, FastPattern
 from .pcre import Pcre
 from .size import DataSize, BufferSize
 from .isdataat import IsDataAt
