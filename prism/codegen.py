@@ -24,31 +24,23 @@ __all__ = (
 )
 
 
-_c_literal_chars = frozenset(
-    ' !#%&\'.,-'
-    '0123456789'
-    ':;=@'
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    '_`'
-    'abcdefghijklmnopqrstuvwxyz'
-    '~'
-)
-_c_escape_chars = frozenset(
-    r'"\\'
-)
+_ascii = (chr(x) for x in range(0x7f))
+_printable = frozenset(x for x in _ascii if x.isprintable())
+
+_c_escape_chars = frozenset(('\\', '"'))
+_c_literal_chars = _printable - _c_escape_chars
 
 
-def _cstr(pat: bytes,
-          allowed: frozenset[str] = _c_literal_chars,
-          escape: frozenset[str] = _c_escape_chars,
-          ) -> str:
+def _esc(pat: Sequence[str],
+         allowed: frozenset[str] = _c_literal_chars,
+         escape: frozenset[str] = _c_escape_chars,
+         ) -> str:
     b = StringIO()
 
     b.write('"')
 
     hx = False
-    for x in pat:
-        ch = chr(x)
+    for ch in pat:
         if ch in allowed:
             if hx and ch in '0123456789abcdefABCDEF':
                 b.write('""')
@@ -58,11 +50,15 @@ def _cstr(pat: bytes,
             b.write(f'\\{ch}')
             hx = False
         else:
-            b.write(f'\\x{x:02x}')
+            b.write(f'\\x{ord(ch):02x}')
             hx = True
 
     b.write('"')
     return b.getvalue()
+
+
+def _cstr(pat: bytes) -> str:
+    return _esc([chr(x) for x in pat])
 
 
 class PrismTemplateEnv(Environment):
@@ -77,7 +73,8 @@ class PrismTemplateEnv(Environment):
             'sorted',
         )})
         self.filters.update({
-            'cstr': _cstr
+            'esc': _esc,
+            'cstr': _cstr,
         })
 
 

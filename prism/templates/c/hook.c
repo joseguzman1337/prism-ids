@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include <hs_runtime.h>
 #include "prism_rules.h"
 #include "prism_hs.h"

@@ -4,7 +4,7 @@ from typing import (
 )
 from itertools import chain
 
-from .hyperscan import HsDatabase
+from .hyperscan import HsDatabase, HsPattern
 from .sticky_buffer import StickyBuffer
 
 __all__ = (
@@ -19,6 +19,7 @@ __all__ = (
     'BufSuffix',
     'BufExact',
 
+    'SinglePattern',
     'MultiPattern',
     'OpSequence',
 )
@@ -156,6 +157,41 @@ class BufSuffix(RtlPat):
 
 class BufExact(RtlPat):
     template_name = 'rtl_bufexact.c'
+
+
+class SinglePattern(RtlBuf):
+    template_name = 'rtl_hs.c'
+    __slots__ = (
+        '_hsdb',
+        '_nxt',
+    )
+
+    def __init__(self,
+                 name: str,
+                 buf: StickyBuffer,
+                 hsdb: HsDatabase,
+                 nxt: RtlNode):
+        assert len(hsdb) == 1
+        super().__init__(name, buf)
+        self._hsdb = hsdb
+        self._nxt = nxt
+
+    @property
+    def children(self) -> Generator[RtlNode, None, None]:
+        yield self._nxt
+
+    @property
+    def hsdb(self) -> HsDatabase:
+        return self._hsdb
+
+    @property
+    def pattern(self) -> HsPattern:
+        pat, = self.hsdb
+        return pat
+
+    @property
+    def on_match(self) -> RtlNode:
+        return self._nxt
 
 
 class MultiPattern(RtlBuf):

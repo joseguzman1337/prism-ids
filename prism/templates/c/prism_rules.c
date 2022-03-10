@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include <hs_runtime.h>
 #include "prism_rules.h"
 #include "prism_hs.h"
@@ -69,6 +70,8 @@ err:
 
 static bool scratch_init(hs_scratch_t **scratch)
 {
+	size_t sz = 0;
+
 // for db in hsdbs
 	if (hs_alloc_scratch(/*{db.cvar_db}*/, scratch) != HS_SUCCESS) {
 		fprintf(stderr, "%s: hs_alloc_scratch", "/*{db.name}*/");
@@ -76,6 +79,8 @@ static bool scratch_init(hs_scratch_t **scratch)
 	}
 
 // endfor
+	hs_scratch_size(*scratch, &sz);
+	fprintf(stderr, "prism: %zu bytes of scratch\n", sz);
 	return true;
 }
 

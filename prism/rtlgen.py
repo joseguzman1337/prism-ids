@@ -13,7 +13,7 @@ from .program import Program
 from .rtl import (
     RtlNode, RtlNop, RtlMatch,
     RtlPat, BufPrefix, BufSuffix, BufExact,
-    OpSequence, MultiPattern,
+    OpSequence, MultiPattern, SinglePattern,
 )
 
 __all__ = (
@@ -252,16 +252,12 @@ class RtlGen:
             f'pat_{buf.name.lower()}',
         )
 
-        return MultiPattern(
+        return SinglePattern(
             self.emit(f'pat_{buf.name.lower()}'),
             buf,
             hsdb,
-            {
-                hsdb[pat]: tail,
-            }
+            tail,
         )
-
-        return tail
 
     def _rtlgen_buf(self,
                     buf: StickyBuffer,
