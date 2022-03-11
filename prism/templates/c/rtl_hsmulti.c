@@ -40,7 +40,7 @@ static void /*{name}*/(prism_thread_t *st,
 		bufs->/*{insn.buf.name.lower()}*/.ptr,
 		bufs->/*{insn.buf.name.lower()}*/.len,
 		0,
-		st->scratch,
+		st->mpm_scratch,
 		on_hs_match_/*{name}*/,
 		&shim);
 	assert(ret == HS_SUCCESS || ret == HS_SCAN_TERMINATED);

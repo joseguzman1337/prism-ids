@@ -86,61 +86,77 @@ static bool scratch_init(hs_scratch_t **scratch)
 
 static prism_thread_t *alloc_thread(void)
 {
-	prism_thread_t *ret;
+	prism_thread_t *st;
 
-	ret = calloc(1, sizeof(*ret));
-	if (ret == NULL) {
+	st = calloc(1, sizeof(*st));
+	if (st == NULL) {
 		fprintf(stderr,
 			"prism_thread_init: calloc: %s",
 			strerror(errno));
 	}
 
-	return ret;
+	return st;
 }
 
 prism_thread_t *prism_thread_new(void)
 {
-	prism_thread_t *ret;
+	prism_thread_t *st;
+	hs_error_t rc;
 
-	ret = alloc_thread();
-	if (unlikely(ret == NULL))
+	st = alloc_thread();
+	if (unlikely(st == NULL))
 		goto out;
 
-	if (unlikely(!scratch_init(&ret->scratch)))
+	if (unlikely(!scratch_init(&st->mpm_scratch)))
 		goto out_free;
+
+	rc = hs_clone_scratch(st->mpm_scratch, &st->scratch);
+	if (rc != HS_SUCCESS)
+		goto out_free_mpm;
 
 	goto out;
 
+out_free_mpm:
+	hs_free_scratch(st->mpm_scratch);
 out_free:
-	free(ret);
-	ret = NULL;
+	free(st);
+	st = NULL;
 out:
-	return ret;
+	return st;
 }
 
-prism_thread_t *prism_thread_clone(const prism_thread_t *st)
+prism_thread_t *prism_thread_clone(const prism_thread_t *orig)
 {
-	prism_thread_t *ret;
+	prism_thread_t *st;
 	hs_error_t rc;
 
-	ret = alloc_thread();
-	if (unlikely(ret == NULL))
+	st = alloc_thread();
+	if (unlikely(st == NULL))
 		goto out;
 
-	rc = hs_clone_scratch(st->scratch, &ret->scratch);
+	rc = hs_clone_scratch(orig->mpm_scratch, &st->mpm_scratch);
 	if (rc != HS_SUCCESS)
 		goto out_free;
 
+	rc = hs_clone_scratch(orig->scratch, &st->scratch);
+	if (rc != HS_SUCCESS)
+		goto out_free_mpm;
+
+	goto out;
+
+out_free_mpm:
+	hs_free_scratch(st->mpm_scratch);
 out_free:
-	free(ret);
-	ret = NULL;
+	free(st);
+	st = NULL;
 out:
-	return ret;
+	return st;
 }
 
 void prism_thread_free(prism_thread_t *st)
 {
 	if (st) {
+		hs_free_scratch(st->mpm_scratch);
 		hs_free_scratch(st->scratch);
 		free(st);
 	}

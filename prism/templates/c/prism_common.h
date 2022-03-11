@@ -15,6 +15,7 @@
 #endif
 
 struct prism_thread_state {
+	hs_scratch_t *mpm_scratch;
 	hs_scratch_t *scratch;
 };
 
