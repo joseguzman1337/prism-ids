@@ -47,10 +47,7 @@ class Test_RtlGen(RtlGenTest):
             )))
         )
 
-    def test_state_bits(self):
-        self.assertEqual(self.rtl.nr_state_bits, 0)
-
-    def test_hooks(self):
+    def test_entries(self):
         hook = self.profile['tls_client']
         self.assertIn(hook, self.rtl.hooks)
         # bm = self.rtl.entries[hook]

@@ -22,8 +22,7 @@ struct /*{hook.name}*/_buffers {
 
 /* Rule matching entry points */
 // for hook in hook_defs
-void entry_/*{hook.name}*/(prism_thread_state_t *st,
-				hs_scratch_t *scratch,
+void entry_/*{hook.name}*/(prism_thread_t *st,
 				const struct /*{hook.name}*/_buffers *bufs,
 				struct prism_sidbuf *sidbuf);
 // endfor

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, Mapping, Sequence, NamedTuple, Tuple
+from typing import Optional, Mapping, Sequence, NamedTuple, Tuple, Generator
 from warnings import warn
 from functools import singledispatch
 import re
@@ -191,6 +191,14 @@ class ContentIR(NamedTuple):
     fast_pattern: Optional[MPMPattern]
     content_opts: Tuple[BufOp, ...]
 
+    @property
+    def has_fast_pattern(self) -> bool:
+        return self.fast_pattern is not None
+
+    @property
+    def mpm_patterns(self) -> Generator[MPMPattern, None, None]:
+        yield from (x for x in self.content_opts if isinstance(x, MPMPattern))
+
     def nominate_fast_pattern(self) -> Optional[MPMPattern]:
         # This isn't quite right
         # https://docs.suricata.io/en/latest/rules/fast-pattern-explained.html
@@ -238,7 +246,7 @@ def irgen_content(buf: StickyBuffer,
                   fast_pattern: Optional[BufferMatch],
                   opts: Sequence[BufferMatch],
                   ) -> ContentIR:
-    if not opts:
+    if fast_pattern is None and not opts:
         raise SemanticError('No opcode for size constraint only')
 
     ret = _irgen_binhex(buf, size_constraint, fast_pattern, opts)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import (
-    Any, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Sequence,
+    Any, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple
 )
 from urllib.parse import quote
 import re
@@ -119,6 +119,20 @@ class ContentModifiers(NamedTuple):
     @property
     def constrained(self) -> bool:
         return self.depth is not None or self.offset is not None
+
+    @property
+    def fast_pattern_only(self) -> bool:
+        fp = self.fast_pattern
+        assert fp is not None
+
+        if self.relative:
+            print('reject fp-only for relative pattern')
+            return False
+        if fp.chop:
+            print('reject fp-only for chop')
+            return False
+
+        return True
 
     @property
     def json_dict(self) -> Dict[str, Any]:  # pragma: nocover
@@ -313,6 +327,16 @@ _default_modifiers = ContentModifiers(
     startswith=False,
     fast_pattern=None,
 )
+_nocase_modifiers = ContentModifiers(
+    nocase=True,
+    depth=None,
+    offset=None,
+    distance=None,
+    within=None,
+    endswith=False,
+    startswith=False,
+    fast_pattern=None,
+)
 
 
 @dataclass(init=False, eq=True)
@@ -367,8 +391,56 @@ class Content(BufferContentMatch, opt_name='content'):
     def as_absolute(self) -> Content:
         return self.with_mods(self.modifiers.as_absolute())
 
+    def chop(self, offset: int, length: int) -> Content:
+        chopped = self.content[offset:offset + length]
+        if len(chopped) != length:
+            raise SemanticError('Bad fast-pattern chop!')
+
+        if self.modifiers.nocase:
+            mods = _nocase_modifiers
+        else:
+            mods = _default_modifiers
+
+        # print('chop', self.content, '->', chopped)
+
+        return Content(
+            self.buf,
+            self.negated,
+            chopped,
+            mods,
+            self.xfrms,
+        )
+
     def strip_fast_pattern(self) -> Content:
         return self.with_mods(self.modifiers.strip_fast_pattern())
+
+    def process_fast_pattern(self) -> Tuple[Optional[Content],
+                                            Optional[Content]]:
+        mods = self.modifiers
+        fp = mods.fast_pattern
+
+        if fp is None:
+            return None, self
+
+        stripped = self.strip_fast_pattern()
+        if mods.fast_pattern_only:
+            return stripped, None
+
+        if fp.chop:
+            fpc = stripped.chop(fp.offset, fp.length)
+        else:
+            fpc = stripped
+        return fpc, stripped
+
+    def fast_pattern(self) -> Optional[Content]:
+        mods = self.modifiers
+        fp = mods.fast_pattern
+        if fp is None:
+            return None
+        ret = self.strip_fast_pattern()
+        if fp.chop:
+            ret = ret.chop(fp.offset, fp.length)
+        return ret
 
     def exact(self) -> Content:
         return self.with_mods(

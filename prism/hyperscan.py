@@ -284,7 +284,7 @@ class HsDatabase(PatternMapping):
 
     @property
     def cvar_db(self) -> str:
-        return f'{self.name}_db'
+        return f'_prism__{self.name}_db'
 
     @property
     def cvar_bin(self) -> str:

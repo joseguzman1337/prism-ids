@@ -26,8 +26,7 @@ void prism_match_sid(uint32_t sid, struct prism_sidbuf *buf)
 	buf->sid_cur++;
 }
 
-static bool hook_thread(hs_scratch_t *scratch,
-			prism_thread_state_t *st,
+static bool hook_thread(prism_thread_t *st,
 			enum prism_entry selected_entry,
 			const union prism_entry_args *args)
 {
@@ -50,7 +49,6 @@ static bool hook_thread(hs_scratch_t *scratch,
 	case PRISM_ENTRY_/*{hook.name.upper()}*/:
 		entry_/*{hook.name}*/(
 			st,
-			scratch,
 			&args->/*{hook.name}*/,
 			&sidbuf);
 		break;
@@ -74,28 +72,20 @@ out:
 
 static bool do_thread(const struct prism_test_program_args *args)
 {
-	hs_scratch_t *scratch = NULL;
-	prism_thread_state_t *st;
+	prism_thread_t *st;
 	bool ret = false;
 
-	if (!prism_scratch_init(&scratch)) {
-		fprintf(stderr, "prism_scratch_init: failed\n");
+	st = prism_thread_new();
+	if (st == NULL) {
+		fprintf(stderr, "prism_thread_new: failed\n");
 		goto out;
 	}
 
-	st = prism_thread_init();
-	if (st == NULL) {
-		fprintf(stderr, "prism_thread_init: failed\n");
-		goto out_free_scratch;
-	}
-
-	ret = hook_thread(scratch, st,
+	ret = hook_thread(st,
 				args->entry,
 				&args->entry_args);
 
-	prism_thread_fini(st);
-out_free_scratch:
-	hs_free_scratch(scratch);
+	prism_thread_free(st);
 out:
 	return ret;
 }

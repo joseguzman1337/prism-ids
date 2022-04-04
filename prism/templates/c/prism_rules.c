@@ -7,7 +7,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <hs_runtime.h>
-
 #include "prism_rules.h"
 #include "prism_hs.h"
 #include "prism_abi.h"
@@ -33,8 +32,11 @@ static hs_database_t *hsdb_load(const char *name,
 
 extern const char /*{db.cvar_bin}*/[];
 extern const size_t /*{db.cvar_size}*/;
-hs_database_t */*{db.cvar_db}*/;
 
+// endfor
+
+// for db in hsdbs
+hs_database_t */*{db.cvar_db}*/;
 // endfor
 
 void prism_global_fini(void)
@@ -65,7 +67,7 @@ err:
 	return false;
 }
 
-bool prism_scratch_init(hs_scratch_t **scratch)
+static bool scratch_init(hs_scratch_t **scratch)
 {
 // for db in hsdbs
 	if (hs_alloc_scratch(/*{db.cvar_db}*/, scratch) != HS_SUCCESS) {
@@ -77,22 +79,64 @@ bool prism_scratch_init(hs_scratch_t **scratch)
 	return true;
 }
 
-prism_thread_state_t *prism_thread_init(void)
+static prism_thread_t *alloc_thread(void)
 {
-	prism_thread_state_t *ret;
+	prism_thread_t *ret;
 
 	ret = calloc(1, sizeof(*ret));
 	if (ret == NULL) {
 		fprintf(stderr,
 			"prism_thread_init: calloc: %s",
 			strerror(errno));
-		return NULL;
 	}
 
 	return ret;
 }
 
-void prism_thread_fini(prism_thread_state_t *st)
+prism_thread_t *prism_thread_new(void)
 {
-	free(st);
+	prism_thread_t *ret;
+
+	ret = alloc_thread();
+	if (unlikely(ret == NULL))
+		goto out;
+
+	if (unlikely(!scratch_init(&ret->scratch)))
+		goto out_free;
+
+	goto out;
+
+out_free:
+	free(ret);
+	ret = NULL;
+out:
+	return ret;
+}
+
+prism_thread_t *prism_thread_clone(const prism_thread_t *st)
+{
+	prism_thread_t *ret;
+	hs_error_t rc;
+
+	ret = alloc_thread();
+	if (unlikely(ret == NULL))
+		goto out;
+
+	rc = hs_clone_scratch(st->scratch, &ret->scratch);
+	if (rc != HS_SUCCESS)
+		goto out_free;
+
+out_free:
+	free(ret);
+	ret = NULL;
+out:
+	return ret;
+}
+
+void prism_thread_free(prism_thread_t *st)
+{
+	if (st) {
+		hs_free_scratch(st->scratch);
+		free(st);
+	}
 }

@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Mapping, NamedTuple, Iterable, Optional
+from typing import Any, Generator, Mapping, NamedTuple, Iterable, Optional
 from collections import defaultdict
 
 from .hook import HookDef, Profile
@@ -16,11 +16,16 @@ from .bufops import BufOps
 from .ir import (
     BufOp, BufSize, BufRemaining, MPMPattern, Opcode, PatternChain, Regex,
 )
-from .irgen import irgen, ContentIR
+from .irgen import irgen
 
 __all__ = (
     'Program',
 )
+
+
+class FastPattern(NamedTuple):
+    buf: StickyBuffer
+    pat: MPMPattern
 
 
 class RuleMatches(NamedTuple):
@@ -63,18 +68,83 @@ class RuleMatches(NamedTuple):
                 print(f' {type(opt).__name__}: {opt}')
         print()
 
-    def irgen(self) -> tuple[Mapping[StickyBuffer, MPMPattern],
-                             Mapping[StickyBuffer, tuple[BufOp, ...]],
-                             tuple[Opcode, ...]]:
-        def optimize(c: ContentIR) -> ContentIR:
-            return c.select_fast_pattern()
+    def irgen(self, r: Rule) -> tuple[FastPattern,
+                                      Mapping[StickyBuffer, tuple[BufOp, ...]],
+                                      tuple[Opcode, ...]]:
+        ir = {k: v.irgen() for k, v in self.bufs.items()}
 
-        ir = {k: optimize(v.irgen()) for k, v in self.bufs.items()}
+        fps = {k: v for k, v in ir.items() if v.has_fast_pattern}
+        if fps:
+            # If a fast-pattern is explicitly selected by the rule author then
+            # we use it
+            if len(fps) > 1:
+                raise SemanticError('Multiple fast-patterns')
+
+            fp_buf, = fps.keys()
+            fp_pat = fps[fp_buf].fast_pattern
+        else:
+            # Otherwise we go through all patterns (and for rel-chains we ask
+            # it to nominate the highest scoring pattern)
+            def all_pats() -> Generator[tuple[StickyBuffer, MPMPattern],
+                                        None, None]:
+                for k, v in ir.items():
+                    yield from ((k, pat.fast_pattern)
+                                for pat in v.mpm_patterns)
+
+            def score(v: Optional[tuple[StickyBuffer, MPMPattern]]) -> int:
+                if v is None:
+                    return 0
+                return v[1].score
+
+            # And then we pick the highest scoring pattern
+            fp = max(all_pats(), default=None, key=score)
+            if fp is None:
+                raise SemanticError('No patterns for fast-pattern')
+
+            # In future we may want to weight different buffers when chosing a
+            # fast pattern?
+
+            # Making sure to remember what buffer it matches
+            fp_buf, fp_pat = fp
+
+            # Make sure we haven't forgotten to extract the winning pattern out
+            # of any rel chains
+            assert fp_pat.fast_pattern is fp_pat
+
+            # Then if we can do the fast-pattern entirely in the MPM then
+            # remove it from bufs.. No point duplicating effort.
+            buf_pats = ir[fp_buf]
+            opts = buf_pats.content_opts
+            if fp_pat in opts:
+                new = buf_pats._replace(
+                    content_opts=tuple(x for x in opts if x is not fp_pat),
+                )
+                if new:
+                    ir[fp_buf] = new
+                else:
+                    del ir[fp_buf]
+                stripped = True
+            else:
+                stripped = False
+
+            debug_fastpat = False
+            if debug_fastpat:
+                print(f'{"Removing" if stripped else "Duplicated"} fast-pat')
+                print(r)
+                if fp is not None:
+                    print(fp_buf)
+                    print(fp_pat)
+                print()
+
+        assert fp_pat is not None
+        assert isinstance(fp_pat, MPMPattern)
+
+        # Finally we can construct all the stuff we need to generate a Program
+        # object for this rule
         return (
-            {k: v.fast_pattern for k, v in ir.items()
-             if v.fast_pattern is not None},
+            FastPattern(fp_buf, fp_pat),
             {k: v.content_opts for k, v in ir.items()
-             if v.content_opts is not None},
+             if v.content_opts},
             tuple(irgen(opt) for opt in self.extra),
         )
 
@@ -90,7 +160,7 @@ def _print_rule(r: Rule,
 
 class Program:
     __slots__ = (
-        '_prefilters',
+        '_prefilter',
         '_bufs',
         '_extra',
 
@@ -102,7 +172,7 @@ class Program:
         '_loc',
     )
 
-    _prefilters: Mapping[StickyBuffer, MPMPattern]
+    _prefilter: FastPattern
     _bufs: Mapping[StickyBuffer, tuple[BufOp, ...]]
     _extra: tuple[Opcode, ...]
 
@@ -114,7 +184,7 @@ class Program:
     _loc: Optional[Loc]
 
     def __init__(self,
-                 prefilters: Mapping[StickyBuffer, MPMPattern],
+                 prefilter: FastPattern,
                  bufs: Mapping[StickyBuffer, tuple[BufOp, ...]],
                  extra: tuple[Opcode, ...],
 
@@ -125,7 +195,7 @@ class Program:
                  raw: Optional[str] = None,
                  loc: Optional[Loc] = None,
                  ) -> None:
-        self._prefilters = prefilters
+        self._prefilter = prefilter
         self._bufs = bufs
         self._extra = extra
 
@@ -178,7 +248,7 @@ class Program:
             raise
 
         try:
-            pre, bufs, extra = rm.irgen()
+            fp, bufs, extra = rm.irgen(r)
         except SemanticError as e:
             if debug_err:
                 print(e)
@@ -186,7 +256,7 @@ class Program:
             e.loc = r.loc
             raise
 
-        assert pre
+        assert fp is not None
 
         if debug:
             _print_rule(r, parsed)
@@ -197,7 +267,7 @@ class Program:
         flow = r.flow
 
         return cls(
-            pre,
+            fp,
             bufs,
             extra,
 
@@ -217,7 +287,7 @@ class Program:
         return p.determine(
             self._head.proto,
             self._flow,
-            self._prefilters.keys() | self._bufs.keys(),
+            self._bufs.keys() | frozenset({self._prefilter.buf}),
             loc=self._loc,
         )
 
@@ -234,8 +304,30 @@ class Program:
         return self._meta
 
     @property
-    def prefilters(self) -> Mapping[StickyBuffer, BufOp]:
-        return self._prefilters
+    def prefilter(self) -> FastPattern:
+        return self._prefilter
+
+    @property
+    def bufs(self) -> Mapping[StickyBuffer, tuple[BufOp, ...]]:
+        return self._bufs
+
+    @property
+    def buf_ops(self) -> Generator[tuple[StickyBuffer, BufOp], None, None]:
+        fp = self._prefilter
+        bufs = self._bufs
+
+        if fp is not None:
+            fp_buf = fp.buf
+            yield from ((fp_buf, x) for x in bufs.get(fp_buf, ()))
+
+            bufs = {k: v for (k, v) in bufs.items() if k is not fp_buf}
+
+        for k, v in bufs.items():
+            yield from ((k, x) for x in v)
+
+    @property
+    def extra(self) -> tuple[Opcode, ...]:
+        return self._extra
 
     @property
     def json_dict(self) -> dict[str, Any]:  # pragma: nocover
@@ -243,10 +335,15 @@ class Program:
             'meta': self._meta.json_dict,
             'head': self._head.json_dict,
             'flow': self._flow.json_dict,
-            'prefilters': {
-                k.value: v.json_dict
-                for k, v in self._prefilters.items()
+            'prefilter': {
+                'buf': self._prefilter.buf.value,
+                'pattern': self._prefilter.pat.json_dict,
             },
+            'buffers': {
+                buf.value: [op.json_dict for op in ops]
+                for buf, ops in self._bufs.items()
+            },
+            'extra': [op.json_dict for op in self._extra],
         }
 
     def __eq__(self, other: object) -> bool:
@@ -258,7 +355,7 @@ class Program:
             self._head == other._head,
             self._flow == other._flow,
 
-            self._prefilters == other._prefilters,
+            self._prefilter == other._prefilter,
             self._bufs == other._bufs,
             self._extra == other._extra,
         ))

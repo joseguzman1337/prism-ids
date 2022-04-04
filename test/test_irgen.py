@@ -4,7 +4,7 @@ from prism import Rule
 from prism.errors import SemanticError
 from prism.flow import Flow, FlowDirection, FlowState
 from prism.ir import BufSize, OptionalDotPrefix, Pattern, PatternChain, Regex
-from prism.program import Program
+from prism.program import FastPattern, Program
 from prism.rule import Action, Direction, RuleHead
 from prism.rulemeta import RuleMeta
 from prism.sticky_buffer import StickyBuffer
@@ -75,25 +75,22 @@ class Test_Irgen(IrgenTest):
             state=FlowState.ESTABLISHED,
         ))
 
-    def test_prefilters(self):
-        self.assertDictEqual(self.p._prefilters, {
-            StickyBuffer.TLS_SNI: OptionalDotPrefix(
-                content=b'.EVIL',
-                nocase=False,
-                start=False,
-                end=True,
+    def test_prefilter(self):
+        self.assertEqual(
+            self.p._prefilter,
+            FastPattern(
+                buf=StickyBuffer.TLS_SNI,
+                pat=OptionalDotPrefix(
+                    content=b'.EVIL',
+                    nocase=False,
+                    start=False,
+                    end=True,
+                ),
             ),
-        })
+        )
 
     def test_bufs(self):
-        self.assertDictEqual(self.p._bufs, {
-            StickyBuffer.TLS_SNI: (OptionalDotPrefix(
-                content=b'.EVIL',
-                nocase=False,
-                start=False,
-                end=True,
-            ),),
-        })
+        self.assertDictEqual(self.p._bufs, {})
 
     def test_extra(self):
         self.assertTupleEqual(self.p._extra, ())
@@ -232,7 +229,7 @@ class Test_BrokenRelIsDataAt(IrgenTest):
         })
 
 
-class Test_Relchain(IrgenTest):
+class Test_RelChain(IrgenTest):
     _msg = 'ET MALWARE CozyDuke APT Possible SSL Cert 2'
     _sid = 2020967
     _rev = 4
@@ -256,42 +253,22 @@ class Test_Relchain(IrgenTest):
         'classtype:targeted-activity;',
     )
 
-    def test_prefilters(self):
-        self.assertDictEqual(self.p._prefilters, {
-            StickyBuffer.TLS_CERT_SERIAL: Pattern(
-                content=b'\x65\x5d',
-                nocase=False,
-                start=True,
-                end=False,
-            ),
-            StickyBuffer.TLS_CERT_SUBJECT: PatternChain(
-                anchor=Pattern(
-                    content=b'C=--',
-                    nocase=False,
-                    start=True,
-                    end=False,
-                ),
-                chain=(
-                    Pattern(
-                        content=b'ST=SomeState',
-                        nocase=False,
-                        start=False,
-                        end=False,
-                    ),
-                ),
-            ),
-        })
-
-    def test_bufs(self):
-        self.assertDictEqual(self.p._bufs, {
-            StickyBuffer.TLS_CERT_SERIAL: (
-                Pattern(
+    def test_prefilter(self):
+        self.assertEqual(
+            self.p._prefilter,
+            FastPattern(
+                buf=StickyBuffer.TLS_CERT_SERIAL,
+                pat=Pattern(
                     content=b'\x65\x5d',
                     nocase=False,
                     start=True,
                     end=False,
                 ),
             ),
+        )
+
+    def test_bufs(self):
+        self.assertDictEqual(self.p._bufs, {
             StickyBuffer.TLS_CERT_SUBJECT: (
                 PatternChain(
                     anchor=Pattern(
@@ -364,17 +341,17 @@ class Test_StringSet(IrgenTest):
             state=FlowState.ESTABLISHED,
         ))
 
-    def test_prefilters(self):
-        self.assertDictEqual(self.p._prefilters, {
-            StickyBuffer.TLS_CERT_ISSUER: Pattern(
-                content=b'O=www.virtuallythere.com',
-                nocase=False,
+    def test_prefilter(self):
+        self.assertEqual(
+            self.p._prefilter,
+            FastPattern(
+                buf=StickyBuffer.TLS_CERT_SUBJECT,
+                pat=Pattern(
+                    content=b'O=www.virtuallythere.com',
+                    nocase=False,
+                ),
             ),
-            StickyBuffer.TLS_CERT_SUBJECT: Pattern(
-                content=b'O=www.virtuallythere.com',
-                nocase=False,
-            ),
-        })
+        )
 
     def test_bufs(self):
         self.assertDictEqual(self.p._bufs, {
@@ -393,10 +370,6 @@ class Test_StringSet(IrgenTest):
                 ),
             ),
             StickyBuffer.TLS_CERT_SUBJECT: (
-                Pattern(
-                    content=b'O=www.virtuallythere.com',
-                    nocase=False,
-                ),
                 Pattern(
                     content=b'OU=new',
                     nocase=False,

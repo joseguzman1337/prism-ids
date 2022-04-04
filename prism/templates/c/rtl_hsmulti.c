@@ -13,7 +13,7 @@ static int on_hs_match_/*{name}*/(unsigned int id,
 // for val, next in insn.mapping()
 	case /*{val}*/:
 		trace(" --> /*{name}*/: val /*{val}*/\n");
-		/*{next.name}*/(shim->st, shim->scratch, shim->buf_len, shim->buf, shim->sidbuf);
+		/*{next.name}*/(shim->st, shim->bufs, shim->sidbuf);
 		break;
 // endfor
 	}
@@ -21,26 +21,22 @@ static int on_hs_match_/*{name}*/(unsigned int id,
 }
 
 __attribute__((hot))
-static void /*{name}*/(prism_thread_state_t *st,
-			hs_scratch_t *scratch,
-			size_t buf_len,
-			const char buf[static buf_len],
+static void /*{name}*/(prism_thread_t *st,
+			const struct /*{hook.name}*/_buffers *bufs,
 			struct prism_sidbuf *sidbuf)
 {
 	struct hs_shim shim = {
 		.st = st,
-		.scratch = scratch,
-		.buf_len = buf_len,
-		.buf = buf,
+		.bufs = bufs,
 		.sidbuf = sidbuf,
 	};
 
 	trace("/*{name}*/ hs_scan /*{insn.hsdb.cvar_db}*/\n");
 	hs_scan(/*{insn.hsdb.cvar_db}*/,
-		buf,
-		buf_len,
+		bufs->/*{insn.buf.name.lower()}*/.ptr,
+		bufs->/*{insn.buf.name.lower()}*/.len,
 		0,
-		scratch,
+		st->scratch,
 		on_hs_match_/*{name}*/,
 		&shim);
 }

@@ -1,12 +1,7 @@
 from __future__ import annotations
-from typing import \
-    Optional, \
-    FrozenSet, \
-    Set, \
-    Sequence, \
-    Tuple, \
-    Mapping, \
-    Generator
+from typing import (
+    Optional, FrozenSet, Set, Sequence, Tuple, Mapping, Generator,
+)
 from itertools import chain
 
 from .hyperscan import HsDatabase
@@ -17,12 +12,14 @@ __all__ = (
 
     'RtlFinal',
     'RtlNop',
-    'CompleteMatch',
-    'PartialMatch',
+    'RtlMatch',
+    'RtlPat',
 
-    'RtlOp',
+    'BufPrefix',
+    'BufSuffix',
+    'BufExact',
+
     'MultiPattern',
-    'ComboPatterns',
     'OpSequence',
 )
 
@@ -76,14 +73,18 @@ class RtlNop(RtlFinal):
     pass
 
 
-class _RtlSidSet(RtlFinal):
+class RtlMatch(RtlFinal):
+    template_name = 'rtl_match.c'
+
     __slots__ = (
         '_sids',
     )
 
     _sids: FrozenSet[int]
 
-    def __init__(self, name: str, sids: FrozenSet[int]):
+    def __init__(self,
+                 name: str,
+                 sids: FrozenSet[int]):
         super().__init__(name)
         self._sids = sids
 
@@ -96,64 +97,68 @@ class _RtlSidSet(RtlFinal):
         return f'{type(self).__name__}({rep})'
 
 
-class CompleteMatch(_RtlSidSet):
-    template_name = 'rtl_match.c'
-    __slots__ = ()
-    pass
-
-
-class PartialMatch(_RtlSidSet):
-    template_name = 'rtl_partial.c'
+class RtlBuf(RtlNode):
     __slots__ = (
         '_buf',
-        '_set_bit',
-        '_finals',
     )
 
-    _buf: StickyBuffer
-    _set_bit: Optional[int]
-    _finals: Mapping[int, Tuple[int, ...]]
+    _sids: FrozenSet[int]
 
-    def __init__(self, name: str, buf: StickyBuffer, sids: FrozenSet[int]):
-        super().__init__(name, sids)
+    def __init__(self,
+                 name: str,
+                 buf: StickyBuffer):
+        super().__init__(name)
         self._buf = buf
-        self._set_bit = None
-        self._finals = {}
-
-    def set_state_bit(self, bit: int) -> None:
-        self._set_bit = bit
-
-    def set_finals(self, fmap: Mapping[int, Tuple[int, ...]]) -> None:
-        self._finals = fmap
-
-    @property
-    def set_bit(self) -> int:
-        assert self._set_bit is not None
-        return self._set_bit
-
-    @property
-    def finals(self) -> Generator[Tuple[int, Tuple[int, ...]], None, None]:
-        yield from self._finals.items()
-
-    @property
-    def has_partials(self) -> bool:
-        return self._set_bit is not None
 
     @property
     def buf(self) -> StickyBuffer:
         return self._buf
 
-    def __repr__(self) -> str:
-        rep = ', '.join(map(str, sorted(self._sids)))
-        return f'{type(self).__name__}({self._buf.name}, {rep})'
+
+class RtlPat(RtlBuf):
+    __slots__ = (
+        '_content',
+        '_nxt',
+    )
+
+    _content: bytes
+    _nxt: RtlNode
+
+    def __init__(self,
+                 name: str,
+                 buf: StickyBuffer,
+                 content: bytes,
+                 nxt: RtlNode):
+        super().__init__(name, buf)
+        self._content = content
+        self._nxt = nxt
+
+    @property
+    def content(self) -> bytes:
+        return self._content
+
+    @property
+    def children(self) -> Generator[RtlNode, None, None]:
+        yield self._nxt
+
+    @property
+    def on_match(self) -> RtlNode:
+        return self._nxt
 
 
-class RtlOp(RtlNode):
-    __slots__ = ()
-    pass
+class BufPrefix(RtlPat):
+    template_name = 'rtl_bufprefix.c'
 
 
-class MultiPattern(RtlOp):
+class BufSuffix(RtlPat):
+    template_name = 'rtl_bufsuffix.c'
+
+
+class BufExact(RtlPat):
+    template_name = 'rtl_bufexact.c'
+
+
+class MultiPattern(RtlBuf):
     template_name = 'rtl_hsmulti.c'
     __slots__ = (
         '_hsdb',
@@ -165,9 +170,10 @@ class MultiPattern(RtlOp):
 
     def __init__(self,
                  name: str,
+                 buf: StickyBuffer,
                  hsdb: HsDatabase,
                  mapping: Mapping[int, RtlNode]):
-        super().__init__(name)
+        super().__init__(name, buf)
         self._hsdb = hsdb
         self._mapping = mapping
 
@@ -186,12 +192,7 @@ class MultiPattern(RtlOp):
         return f'{type(self).__name__}(hsdb={self._hsdb.name})'
 
 
-class ComboPatterns(RtlOp):
-    __slots__ = ()
-    pass
-
-
-class OpSequence(RtlOp):
+class OpSequence(RtlNode):
     template_name = 'rtl_seq.c'
     __slots__ = (
         '_steps',
@@ -199,7 +200,9 @@ class OpSequence(RtlOp):
 
     _steps: Tuple[RtlNode, ...]
 
-    def __init__(self, name: str, steps: Sequence[RtlNode]):
+    def __init__(self,
+                 name: str,
+                 steps: Sequence[RtlNode]):
         super().__init__(name)
         self._steps = tuple(steps)
 

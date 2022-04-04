@@ -5,6 +5,7 @@ from pathlib import Path
 from importlib.resources import files
 from importlib.resources.abc import Traversable
 from shutil import rmtree
+from io import StringIO
 
 import builtins
 import csv
@@ -14,8 +15,7 @@ from jinja2 import (
 )
 
 from .hook import Profile
-from .rtlgen import RtlObject, RtlHookProg
-from .rtl import RtlNode
+from .rtlgen import RtlObject, RtlHook
 from .hyperscan import HsDatabase
 from .hook import HookDef
 
@@ -24,8 +24,45 @@ __all__ = (
 )
 
 
-def _state_bit_isset(x: str) -> str:
-    return f'state_bit_isset(st, {x})'
+_c_literal_chars = frozenset(
+    ' !#%&\'.,-'
+    '0123456789'
+    ':;=@'
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    '_`'
+    'abcdefghijklmnopqrstuvwxyz'
+    '~'
+)
+_c_escape_chars = frozenset(
+    r'"\\'
+)
+
+
+def _cstr(pat: bytes,
+          allowed: frozenset[str] = _c_literal_chars,
+          escape: frozenset[str] = _c_escape_chars,
+          ) -> str:
+    b = StringIO()
+
+    b.write('"')
+
+    hx = False
+    for x in pat:
+        ch = chr(x)
+        if ch in allowed:
+            if hx and ch in '0123456789abcdefABCDEF':
+                b.write('""')
+            b.write(ch)
+            hx = False
+        elif ch in escape:
+            b.write(f'\\{ch}')
+            hx = False
+        else:
+            b.write(f'\\x{x:02x}')
+            hx = True
+
+    b.write('"')
+    return b.getvalue()
 
 
 class PrismTemplateEnv(Environment):
@@ -40,7 +77,7 @@ class PrismTemplateEnv(Environment):
             'sorted',
         )})
         self.filters.update({
-            'state_bit_isset': _state_bit_isset
+            'cstr': _cstr
         })
 
 
@@ -63,8 +100,6 @@ class CTemplateEnv(PrismTemplateEnv):
 class CodeTemplates(NamedTuple):
     prism_rules_c: Template
     hs_h: Template
-    common_h: Template
-    bufentry_c: Template
     abi_h: Template
     test_args_c: Template
     hook_c: Template
@@ -85,6 +120,7 @@ class CBackend:
     _obj_dir = 'obj'
     _verbatim_files = (
         'prism_rules.h',
+        'prism_common.h',
         'hyperc.c',
     )
     _mk_files = (
@@ -191,17 +227,12 @@ class CBackend:
             self.write_hook(
                 src_dir / f'prism_hook_{hook.name}.c',
                 hook,
-                hsdb_seq,
-                ent.insns,
-                ent.bufmap,
+                ent,
             )
 
-        self.write_common_h(
-            src_dir / 'prism_common.h',
-            unit.nr_state_bits,
-        )
-
-        self.write_abi_h(src_dir / 'prism_abi.h', unit.nr_sids)
+        self.write_abi_h(src_dir / 'prism_abi.h',
+                         {hook: rh.nr_sids
+                          for hook, rh in unit.hooks.items()})
         self.write_hs_h(src_dir / 'prism_hs.h', hsdb_seq)
         self.write_test_args_c(src_dir / 'test_args.c')
 
@@ -234,22 +265,14 @@ class CBackend:
                 out / filename,
             )
 
-    def write_hs_h(self, p: Path, hsdbs: Sequence[HsDatabase]) -> None:
+    def write_hs_h(
+        self,
+        p: Path,
+        hsdbs: Sequence[HsDatabase],
+    ) -> None:
         code = self._tmpl.hs_h.render(
             hsdbs=hsdbs,
         )
-
-        p.write_text(code)
-
-    def write_common_h(
-        self,
-        p: Path,
-        nr_state_bits: int,
-    ) -> None:
-        code = self._tmpl.common_h.render(
-            state_bitmap_sz=(nr_state_bits + 63) // 64,
-        )
-
         p.write_text(code)
 
     def write_abi_h(self, p: Path, nr_sids: Mapping[HookDef, int]) -> None:
@@ -298,36 +321,25 @@ class CBackend:
         self,
         p: Path,
         hook: HookDef,
-        hsdbs: Sequence[HsDatabase],
-        insns: Mapping[str, RtlNode],
-        bufmap: RtlHookProg,
+        rh: RtlHook,
     ) -> None:
         with p.open('w') as f:
             f.write(self._tmpl.hook_c.render())
 
-            for name, insn in insns.items():
+            for name, insn in rh.insns.items():
                 tmpl = self._get_template(insn.template_name)
                 f.write('\n')
                 f.write(tmpl.render(
                     name=name,
                     insn=insn,
-                ))
-
-            for buf, insn in bufmap.items():
-                assert buf is not None
-                f.write('\n')
-                f.write(self._tmpl.bufentry_c.render(
-                    buf=buf,
                     hook=hook,
-                    buf_name=buf.name.lower(),
-                    entry=insn,
                 ))
 
             f.write('\n')
-            buf_names = tuple((buf.name.lower() for buf in bufmap))
+
             f.write(self._tmpl.entry_c.render(
                 hook=hook,
-                buf_names=buf_names,
+                entry=rh.entry.name,
             ))
 
     def write_main_c(self, p: Path) -> None:
@@ -380,8 +392,6 @@ class CBackend:
         return CodeTemplates(
            prism_rules_c=get('prism_rules.c'),
            hs_h=get('prism_hs.h'),
-           common_h=get('prism_common.h'),
-           bufentry_c=get('bufentry.c'),
            abi_h=get('abi.h'),
            test_args_c=get('test_args.c'),
            hook_c=get('hook.c'),

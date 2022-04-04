@@ -86,6 +86,10 @@ class MPMPattern(BufOp):
         raise NotImplementedError
 
     @property
+    def fast_pattern(self) -> MPMPattern:
+        return self
+
+    @property
     def score(self) -> int:
         raise NotImplementedError
 
@@ -248,16 +252,11 @@ class Regex(BufOp):
 
 @dataclass(frozen=True, eq=True)
 class StringSet(BufOp):
-    content: tuple[bytes, ...]
+    patterns: tuple[MPMPattern, ...]
 
     @property
     def json_dict(self) -> Dict[str, Any]:  # pragma: nocover
         return {
             'type': self.opcode_name,
-            'string_set': [quote(s) for s in self.content],
+            'string_set': [s.hyperscan_pattern for s in self.patterns]
         }
-
-    def remove(self, pat: bytes) -> StringSet:
-        cls = type(self)
-        content = tuple((x for x in self.content if x != pat))
-        return cls(content)
