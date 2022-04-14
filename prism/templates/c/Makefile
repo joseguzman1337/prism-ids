@@ -8,6 +8,7 @@ BIN_DIR := bin
 include mk/rules.mk
 
 include mk/hyperscan.mk
+include mk/pcre2.mk
 include mk/prism.rules.mk
 
 # This make fragment lists out all of the generated source files for hooks.
@@ -31,10 +32,11 @@ PRISM_SRC := \
 	test_args.c \
 	main.c
 
-PRISM_LIB := $(HS_RT_LDFLAGS) -lzstd -lz
+PRISM_LIB := $(HS_RT_LDFLAGS) $(PCRE2_LIBS) -lzstd -lz
 
 $(eval $(call make_bin,prism,$(PRISM_SRC),$(PRISM_LIB)))
 $(eval $(call add_cflags,$(PRISM_SRC),$(HS_CFLAGS)))
+$(eval $(call add_cflags,$(PRISM_SRC),$(PCRE2_CFLAGS)))
 
 include mk/targets.mk
 include mk/deps.mk

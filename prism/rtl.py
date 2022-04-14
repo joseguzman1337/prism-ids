@@ -5,6 +5,7 @@ from typing import (
 from itertools import chain
 
 from .hyperscan import HsDatabase, HsPattern
+from .pcre2 import Pcre2
 from .sticky_buffer import StickyBuffer
 
 __all__ = (
@@ -157,6 +158,38 @@ class BufSuffix(RtlPat):
 
 class BufExact(RtlPat):
     template_name = 'rtl_bufexact.c'
+
+
+class Pcre(RtlBuf):
+    template_name = 'rtl_pcre.c'
+
+    __slots__ = (
+        '_pcre2',
+        '_nxt',
+    )
+
+    _nxt: RtlNode
+
+    def __init__(self,
+                 name: str,
+                 buf: StickyBuffer,
+                 pcre2: Pcre2,
+                 nxt: RtlNode):
+        super().__init__(name, buf)
+        self._pcre2 = pcre2
+        self._nxt = nxt
+
+    @property
+    def pcre2(self) -> Pcre2:
+        return self._pcre2
+
+    @property
+    def children(self) -> Generator[RtlNode, None, None]:
+        yield self._nxt
+
+    @property
+    def on_match(self) -> RtlNode:
+        return self._nxt
 
 
 class SinglePattern(RtlBuf):

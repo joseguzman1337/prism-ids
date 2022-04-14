@@ -18,6 +18,7 @@ from .hook import Profile
 from .rtlgen import RtlObject, RtlHook
 from .hyperscan import HsDatabase
 from .hook import HookDef
+from .pcre2 import Pcre2
 
 __all__ = (
     'CBackend',
@@ -125,6 +126,7 @@ class CBackend:
         'deps.mk',
         'header.mk',
         'hyperscan.mk',
+        'pcre2.mk',
         'prism.rules.mk',
         'rules.mk',
         'targets.mk',
@@ -194,6 +196,7 @@ class CBackend:
 
         hsdbs = unit.hyperscan_dbs
         hsdb_seq = tuple(hsdbs.values())
+        pcre_seq = tuple(unit.pcres.values())
 
         for hsdb in hsdb_seq:
             hsdb.write_hsdef(src_dir / f'{hsdb.name}.hsdef')
@@ -218,6 +221,7 @@ class CBackend:
         self.write_prism_rules_c(
             src_dir / 'prism_rules.c',
             hsdb_seq,
+            pcre_seq,
         )
 
         for hook, ent in unit.hooks.items():
@@ -230,7 +234,7 @@ class CBackend:
         self.write_abi_h(src_dir / 'prism_abi.h',
                          {hook: rh.nr_sids
                           for hook, rh in unit.hooks.items()})
-        self.write_hs_h(src_dir / 'prism_hs.h', hsdb_seq)
+        self.write_hs_h(src_dir / 'prism_hs.h', hsdb_seq, pcre_seq)
         self.write_test_args_c(src_dir / 'test_args.c')
 
         cert_bl = set()
@@ -266,10 +270,13 @@ class CBackend:
         self,
         p: Path,
         hsdbs: Sequence[HsDatabase],
+        pcres: Sequence[Pcre2],
     ) -> None:
         code = self._tmpl.hs_h.render(
             hsdbs=hsdbs,
+            pcres=pcres,
         )
+
         p.write_text(code)
 
     def write_abi_h(self, p: Path, nr_sids: Mapping[HookDef, int]) -> None:
@@ -308,10 +315,12 @@ class CBackend:
         self,
         p: Path,
         hsdbs: Sequence[HsDatabase],
+        pcres: Sequence[Pcre2],
     ) -> None:
         with p.open('w') as f:
             f.write(self._tmpl.prism_rules_c.render(
                 hsdbs=hsdbs,
+                pcres=pcres,
             ))
 
     def write_hook(

@@ -1,18 +1,19 @@
 from __future__ import annotations
 from typing import (
     Optional, Generator, NamedTuple, List, Tuple, Mapping, Type, Set, Dict,
-    DefaultDict, Sequence, Iterable,
+    DefaultDict, Sequence, Iterable, FrozenSet,
 )
 from collections import defaultdict, Counter
 
 from .sticky_buffer import StickyBuffer
 from .hook import HookDef, Profile
 from .hyperscan import HsPattern, HsDatabase
-from .ir import Pattern, BufOp
+from .pcre2 import Pcre2
+from .ir import Regex, Pattern, PatternChain, BufOp
 from .program import Program
 from .rtl import (
     RtlNode, RtlNop, RtlMatch,
-    RtlPat, BufPrefix, BufSuffix, BufExact,
+    RtlPat, BufPrefix, BufSuffix, BufExact, Pcre,
     OpSequence, MultiPattern, SinglePattern,
 )
 
@@ -41,14 +42,17 @@ class RtlCache:
     __slots__ = (
         '_names',
         '_hsdbs',
+        '_pcres',
     )
 
     _names: Counter[str]
     _hsdbs: Dict[Tuple[HsPattern, ...], HsDatabase]
+    _pcres: Dict[Tuple[str, FrozenSet[str]], Pcre2]
 
     def __init__(self) -> None:
         self._names = Counter()
         self._hsdbs = {}
+        self._pcres = {}
 
     # name, name_2, name_3, etc..
     def emit_unique(self, name: str) -> str:
@@ -80,9 +84,25 @@ class RtlCache:
 
         return hsdb
 
+    def pcre(self, regex: str, flags: FrozenSet[str]) -> Pcre2:
+        cache = self._pcres
+        key = (regex, flags)
+        pcre2 = cache.get(key)
+        if pcre2 is not None:
+            return pcre2
+
+        pcre2 = Pcre2(f'pcre2_{len(cache)}', regex, flags)
+        cache[key] = pcre2
+
+        return pcre2
+
     @property
     def hyperscan_dbs(self) -> Generator[HsDatabase, None, None]:
         yield from self._hsdbs.values()
+
+    @property
+    def pcres(self) -> Generator[Pcre2, None, None]:
+        yield from self._pcres.values()
 
 
 class RtlGen:
@@ -266,6 +286,16 @@ class RtlGen:
                     ) -> RtlNode:
         if isinstance(op, Pattern):
             return self._rtlgen_pat(buf, op, tail)
+        elif isinstance(op, Regex):
+            pcre = self._cache.pcre(op.regex, op.modifiers)
+            return Pcre(
+                self.emit(f'{buf.name.lower()}_regex'),
+                buf,
+                pcre,
+                tail,
+            )
+        elif isinstance(op, PatternChain):
+            return RtlNop(f'{buf.name.lower()}_relchain')
         else:
             raise NotImplementedError(type(op).__name__)
 
@@ -331,13 +361,17 @@ class RtlHook(NamedTuple):
 class RtlObject(NamedTuple):
     profile: Profile
     hyperscan_dbs: Mapping[str, HsDatabase]
+    pcres: Mapping[str, Pcre2]
     hooks: Mapping[HookDef, RtlHook]
 
     def dump(self) -> None:
-        _, hyperscan_dbs, hooks = self
+        _, hyperscan_dbs, pcres, hooks = self
 
         for name, hsdb in hyperscan_dbs.items():
             print(f'hsdb: {name} -> {hsdb}')
+
+        for name, pcre in pcres.items():
+            print(f'pcre: {name} -> {pcre}')
 
         for hook, h in hooks.items():
             print(f'hook: {hook.name}')
@@ -347,6 +381,7 @@ class RtlObject(NamedTuple):
     def link(cls,
              profile: Profile,
              hsdbs: Iterable[HsDatabase],
+             pcres: Iterable[Pcre2],
              units: Iterable[RtlGen],
              ) -> RtlObject:
         prog = {unit.hook: unit for unit in units}
@@ -354,6 +389,7 @@ class RtlObject(NamedTuple):
         return RtlObject(
             profile,
             {db.name: db for db in hsdbs},
+            {pcre.name: pcre for pcre in pcres},
             {hook: RtlHook(unit.nr_sids, unit.code, unit.root)
              for hook, unit in prog.items()},
         )
@@ -386,7 +422,7 @@ def gen_rtl(
     units = (RtlGen(hook, cache, r) for (hook, r)
              in _partition(profile, sigs).items())
 
-    obj = RtlObject.link(profile, cache.hyperscan_dbs, units)
+    obj = RtlObject.link(profile, cache.hyperscan_dbs, cache.pcres, units)
 
     if debug:
         obj.dump()
