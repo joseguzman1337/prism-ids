@@ -264,6 +264,22 @@ class Test_Relchain(IrgenTest):
                 start=True,
                 end=False,
             ),
+            StickyBuffer.TLS_CERT_SUBJECT: PatternChain(
+                anchor=Pattern(
+                    content=b'C=--',
+                    nocase=False,
+                    start=True,
+                    end=False,
+                ),
+                chain=(
+                    Pattern(
+                        content=b'ST=SomeState',
+                        nocase=False,
+                        start=False,
+                        end=False,
+                    ),
+                ),
+            ),
         })
 
     def test_bufs(self):

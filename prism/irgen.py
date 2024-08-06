@@ -191,17 +191,22 @@ class ContentIR(NamedTuple):
     fast_pattern: Optional[MPMPattern]
     content_opts: Tuple[BufOp, ...]
 
+    def nominate_fast_pattern(self) -> Optional[MPMPattern]:
+        # This isn't quite right
+        # https://docs.suricata.io/en/latest/rules/fast-pattern-explained.html
+
+        pats = [x for x in self.content_opts if isinstance(x, MPMPattern)]
+        if not pats:
+            return None
+
+        return max(pats, key=lambda x: x.len_score)
+
     def select_fast_pattern(self) -> ContentIR:
         if self.fast_pattern is not None:
             return self
 
-        opts = self.content_opts
-        if not opts:
-            return self
+        fp = self.nominate_fast_pattern()
 
-        pats = [x for x in opts if isinstance(x, Pattern)]
-
-        fp = max(pats, default=None, key=lambda x: len(x.content))
         if fp is None:
             return self
 

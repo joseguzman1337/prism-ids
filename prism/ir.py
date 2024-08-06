@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, FrozenSet, Tuple
+from typing import Any, Dict, FrozenSet, Generator
 from warnings import warn
 from dataclasses import dataclass
 from urllib.parse import quote
@@ -85,6 +85,17 @@ class MPMPattern(BufOp):
     def hyperscan_pattern(self) -> HsPattern:
         raise NotImplementedError
 
+    @property
+    def score(self) -> int:
+        raise NotImplementedError
+
+    def __len__(self) -> int:
+        raise NotImplementedError
+
+    @property
+    def len_score(self) -> tuple[int, int]:
+        return (len(self), self.score)
+
 
 @dataclass(frozen=True, eq=True)
 class Pattern(MPMPattern):
@@ -109,6 +120,38 @@ class Pattern(MPMPattern):
         s = '^' if self.start else ''
         e = '$' if self.end else ''
         return f'{s}{regex}{e}'
+
+    def __len__(self) -> int:
+        return len(self.content)
+
+    @property
+    def score(self) -> int:
+        a: set[int] = set()
+        score = 0
+
+        # Suricata: 8.10.1.1.1.1. Appendix A - Pattern Strength Algorithm
+        for val in self.content:
+            if val in a:
+                score += 1
+            else:
+                a.add(val)
+                c = chr(val)
+                if c.isalpha():
+                    score += 3
+                elif c.isprintable() or val in {0, 1, 0xff}:
+                    score += 4
+                else:
+                    score += 6
+
+        # Add bonuses for being start/end anchored or exact-match
+        if self.end:
+            score += 5
+        if self.start:
+            score += 10
+        if self.end and self.start:
+            score += 15
+
+        return score
 
     @property
     def hyperscan_pattern(self) -> HsPattern:
@@ -137,11 +180,31 @@ class Pattern(MPMPattern):
 @dataclass(frozen=True, eq=True)
 class PatternChain(MPMPattern):
     anchor: MPMPattern
-    chain: Tuple[BufOp, ...]
+    chain: tuple[BufOp, ...]
 
     @property
     def hyperscan_pattern(self) -> HsPattern:
         return self.anchor.hyperscan_pattern
+
+    @property
+    def mpm_patterns(self) -> Generator[MPMPattern, None, None]:
+        yield self.anchor
+        yield from (x for x in self.chain if isinstance(x, MPMPattern))
+
+    @property
+    def fast_pattern(self) -> MPMPattern:
+        best = max(
+            self.mpm_patterns,
+            key=lambda x: x.len_score,
+        )
+        return best
+
+    def __len__(self) -> int:
+        return len(self.fast_pattern)
+
+    @property
+    def score(self) -> int:
+        return self.fast_pattern.score
 
     @property
     def json_dict(self) -> Dict[str, Any]:  # pragma: nocover
@@ -185,7 +248,7 @@ class Regex(BufOp):
 
 @dataclass(frozen=True, eq=True)
 class StringSet(BufOp):
-    content: Tuple[bytes, ...]
+    content: tuple[bytes, ...]
 
     @property
     def json_dict(self) -> Dict[str, Any]:  # pragma: nocover
