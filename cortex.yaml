@@ -1,0 +1,17 @@
+openapi: 3.0.0
+info:
+  title: prism-ids
+  description: A suricata rule compiler and checker Created by Gianni Tedesco via the GitHub Connector
+  x-cortex-git:
+    github:
+      alias: r7org
+      repository: rapid7/prism-ids
+  x-cortex-tag: prism-ids
+  x-cortex-type: service
+  x-cortex-domain-parents:
+    - tag: insightidr
+  x-cortex-groups:
+    - target:library
+    - strategy:cloud
+    - exposure:opensource
+    
