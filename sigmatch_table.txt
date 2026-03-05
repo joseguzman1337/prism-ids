@@ -1,0 +1,850 @@
+sid
+
+priority
+
+rev
+
+classtype
+
+app-layer-protocol
+ QUOTES_OPTIONAL
+ HANDLE_NEGATION
+
+tcp.ack ack
+
+tcp.seq seq
+
+tcp.window window
+
+ipopts
+
+ip.src
+ NOOPT
+ STICKY_BUFFER
+
+ip.dst
+ NOOPT
+ STICKY_BUFFER
+
+tcp.flags flags
+
+fragbits
+
+fragoffset
+
+ttl
+
+tos
+ QUOTES_OPTIONAL
+ HANDLE_NEGATION
+
+itype
+
+icode
+
+icmp_id
+
+icmp_seq
+
+icmpv4.hdr
+ NOOPT
+ STICKY_BUFFER
+
+dsize
+
+flow
+
+threshold
+ IPONLY_COMPAT
+
+metadata
+
+reference
+
+tag
+ IPONLY_COMPAT
+
+msg
+ QUOTES_MANDATORY
+
+content
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+uricontent
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+pcre
+ QUOTES_OPTIONAL
+ HANDLE_NEGATION
+
+depth
+
+startswith
+ NOOPT
+
+endswith
+ NOOPT
+
+distance
+
+within
+
+offset
+
+replace
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+nocase
+ NOOPT
+
+fast_pattern
+ OPTIONAL_OPT
+
+rawbytes
+ NOOPT
+
+byte_test
+
+byte_jump
+
+byte_math
+
+sameip
+ NOOPT
+
+geoip
+
+ip_proto
+ QUOTES_OPTIONAL
+
+ftpbounce
+ NOOPT
+
+isdataat
+
+id
+
+rpc
+
+flowvar
+
+flowint
+
+pktvar
+
+noalert
+ NOOPT
+
+alert
+ NOOPT
+
+flowbits
+ IPONLY_COMPAT
+
+hostbits
+ IPONLY_COMPAT
+
+ipv4-csum
+
+tcpv4-csum
+
+tcpv6-csum
+
+udpv4-csum
+
+udpv6-csum
+
+icmpv4-csum
+
+icmpv6-csum
+
+stream_size
+
+detection_filter
+ IPONLY_COMPAT
+
+dataset
+
+datarep
+
+decode-event
+ DEONLY_COMPAT
+
+gid
+
+nfq_set_mark
+
+bsize
+
+frame
+ STICKY_BUFFER
+
+flow.age
+
+requires
+
+tls.version
+
+tls.subject
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+tls.issuerdn
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+tls_cert_notbefore
+
+tls_cert_notafter
+
+tls_cert_expired
+ NOOPT
+
+tls_cert_valid
+ NOOPT
+
+tls.fingerprint
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+tls_store tls.store
+ NOOPT
+
+tls.cert_chain_len
+
+http_cookie
+ NOOPT
+ CONTENT_MODIFIER
+
+http.cookie
+ NOOPT
+ STICKY_BUFFER
+
+http_method
+ NOOPT
+ CONTENT_MODIFIER
+
+http.method
+ NOOPT
+ STICKY_BUFFER
+
+http.protocol http_protocol
+ NOOPT
+ STICKY_BUFFER
+
+http.start http_start
+ NOOPT
+ STICKY_BUFFER
+
+urilen
+
+http_client_body
+ NOOPT
+ CONTENT_MODIFIER
+
+http.request_body
+ NOOPT
+ STICKY_BUFFER
+
+http_server_body
+ NOOPT
+ CONTENT_MODIFIER
+
+http.response_body
+ NOOPT
+ STICKY_BUFFER
+
+http_header
+ NOOPT
+ CONTENT_MODIFIER
+
+http.header
+ NOOPT
+ STICKY_BUFFER
+
+http.header_names http_header_names
+ NOOPT
+ STICKY_BUFFER
+
+http.accept http_accept
+ NOOPT
+ STICKY_BUFFER
+
+http.accept_lang http_accept_lang
+ NOOPT
+ STICKY_BUFFER
+
+http.accept_enc http_accept_enc
+ NOOPT
+ STICKY_BUFFER
+
+http.connection http_connection
+ NOOPT
+ STICKY_BUFFER
+
+http.content_len http_content_len
+ NOOPT
+ STICKY_BUFFER
+
+http.content_type http_content_type
+ NOOPT
+ STICKY_BUFFER
+
+http.location
+ NOOPT
+ STICKY_BUFFER
+
+http.server
+ NOOPT
+ STICKY_BUFFER
+
+http.referer http_referer
+ NOOPT
+ STICKY_BUFFER
+
+http_raw_header
+ NOOPT
+ CONTENT_MODIFIER
+
+http.header.raw
+ NOOPT
+ STICKY_BUFFER
+
+http_uri
+ NOOPT
+ CONTENT_MODIFIER
+
+http.uri http.uri.normalized
+ NOOPT
+ STICKY_BUFFER
+
+http.uri.raw
+ NOOPT
+ STICKY_BUFFER
+
+http_raw_uri
+ NOOPT
+ CONTENT_MODIFIER
+
+http_stat_msg
+ NOOPT
+ CONTENT_MODIFIER
+
+http.stat_msg
+ NOOPT
+ STICKY_BUFFER
+
+http_stat_code
+ NOOPT
+ CONTENT_MODIFIER
+
+http.stat_code
+ NOOPT
+ STICKY_BUFFER
+
+http_user_agent
+ NOOPT
+ CONTENT_MODIFIER
+
+http.user_agent
+ NOOPT
+ STICKY_BUFFER
+
+http_host
+ NOOPT
+ CONTENT_MODIFIER
+
+http.host
+ NOOPT
+ STICKY_BUFFER
+
+http_raw_host
+ NOOPT
+ CONTENT_MODIFIER
+
+http.host.raw
+ NOOPT
+ STICKY_BUFFER
+
+http.request_line http_request_line
+ NOOPT
+ STICKY_BUFFER
+
+http.response_line http_response_line
+ NOOPT
+ STICKY_BUFFER
+
+nfs_procedure
+
+nfs.version nfs_version
+
+ssh.proto ssh_proto
+ NOOPT
+ STICKY_BUFFER
+
+ssh.protoversion
+ QUOTES_OPTIONAL
+ DEPRECATED
+
+ssh.software ssh_software
+ NOOPT
+ STICKY_BUFFER
+
+ssh.softwareversion
+ QUOTES_OPTIONAL
+ DEPRECATED
+
+ssh.hassh ssh-hassh
+ NOOPT
+ STICKY_BUFFER
+
+ssh.hassh.server ssh-hassh-server
+ NOOPT
+ STICKY_BUFFER
+
+ssh.hassh.string ssh-hassh-string
+ NOOPT
+ STICKY_BUFFER
+
+ssh.hassh.server.string ssh-hassh-server-string
+ NOOPT
+ STICKY_BUFFER
+
+ssl_version
+
+ssl_state
+
+byte_extract
+
+file.data file_data
+ NOOPT
+
+pkt_data
+ NOOPT
+
+app-layer-event
+
+http2.frametype
+
+http2.errorcode
+
+http2.priority
+
+http2.window
+
+http2.size_update
+
+http2.settings
+
+http2.header_name
+ NOOPT
+ STICKY_BUFFER
+
+http.request_header
+ NOOPT
+ STICKY_BUFFER
+
+http.response_header
+ NOOPT
+ STICKY_BUFFER
+
+dcerpc.iface dce_iface
+
+dcerpc.opnum dce_opnum
+
+dcerpc.stub_data dce_stub_data
+ NOOPT
+ STICKY_BUFFER
+
+smb.named_pipe smb_named_pipe
+ NOOPT
+ STICKY_BUFFER
+
+smb.share smb_share
+ NOOPT
+ STICKY_BUFFER
+
+smb.ntlmssp_user
+ NOOPT
+ STICKY_BUFFER
+
+smb.ntlmssp_domain
+ NOOPT
+ STICKY_BUFFER
+
+asn1
+
+engine-event
+
+stream-event
+
+config
+
+filename
+ QUOTES_OPTIONAL
+ HANDLE_NEGATION
+
+file.name
+ NOOPT
+ STICKY_BUFFER
+
+fileext
+ QUOTES_OPTIONAL
+ HANDLE_NEGATION
+
+filestore
+ OPTIONAL_OPT
+
+filemagic
+ QUOTES_MANDATORY
+ HANDLE_NEGATION
+
+file.magic
+ NOOPT
+ STICKY_BUFFER
+
+filemd5
+
+filesha1
+
+filesha256
+
+filesize
+
+l3_proto
+
+lua luajit
+ NOT_BUILT
+
+iprep
+ IPONLY_COMPAT
+
+dns.query dns_query
+ NOOPT
+ STICKY_BUFFER
+
+dns.opcode
+
+tls.sni tls_sni
+ NOOPT
+ STICKY_BUFFER
+
+tls.certs
+ NOOPT
+ STICKY_BUFFER
+
+tls.cert_issuer tls_cert_issuer
+ NOOPT
+ STICKY_BUFFER
+
+tls.cert_subject tls_cert_subject
+ NOOPT
+ STICKY_BUFFER
+
+tls.cert_serial tls_cert_serial
+ NOOPT
+ STICKY_BUFFER
+
+tls.cert_fingerprint tls_cert_fingerprint
+ NOOPT
+ STICKY_BUFFER
+
+tls.random_time
+ NOOPT
+ STICKY_BUFFER
+
+tls.random_bytes
+ NOOPT
+ STICKY_BUFFER
+
+tls.random
+ NOOPT
+ STICKY_BUFFER
+
+ja3.hash ja3_hash
+ NOOPT
+ STICKY_BUFFER
+
+ja3.string ja3_string
+ NOOPT
+ STICKY_BUFFER
+
+ja3s.hash
+ NOOPT
+ STICKY_BUFFER
+
+ja3s.string
+ NOOPT
+ STICKY_BUFFER
+
+modbus
+
+cip_service
+
+enip_command
+
+dnp3.data dnp3_data
+ NOOPT
+ STICKY_BUFFER
+
+dnp3_func dnp3.func
+
+dnp3_ind dnp3.ind
+
+dnp3_obj dnp3.obj
+
+xbits
+ IPONLY_COMPAT
+
+base64_decode
+ OPTIONAL_OPT
+
+base64_data
+ NOOPT
+
+krb5_err_code
+
+krb5_msg_type
+
+krb5.cname krb5_cname
+ NOOPT
+ STICKY_BUFFER
+
+krb5.sname krb5_sname
+ NOOPT
+ STICKY_BUFFER
+
+krb5.ticket_encryption
+
+sip.method
+ NOOPT
+
+sip.uri
+ NOOPT
+
+sip.protocol
+ NOOPT
+
+sip.stat_code
+ NOOPT
+
+sip.stat_msg
+ NOOPT
+
+sip.request_line
+ NOOPT
+
+sip.response_line
+ NOOPT
+
+rfb.secresult
+
+rfb.sectype
+
+rfb.name
+ NOOPT
+ STICKY_BUFFER
+
+template
+
+template2
+
+ipv4.hdr
+ NOOPT
+ STICKY_BUFFER
+
+ipv6.hdr
+ NOOPT
+ STICKY_BUFFER
+
+icmpv6.hdr
+ NOOPT
+ STICKY_BUFFER
+
+icmpv6.mtu
+
+tcp.hdr
+ NOOPT
+ STICKY_BUFFER
+
+udp.hdr
+ NOOPT
+ STICKY_BUFFER
+
+tcp.mss
+
+ftpdata_command
+
+target
+
+dhcp.leasetime
+
+dhcp.rebinding_time
+
+dhcp.renewal_time
+
+snmp.usm
+ NOOPT
+ STICKY_BUFFER
+
+snmp.version
+
+snmp.community
+ NOOPT
+ STICKY_BUFFER
+
+snmp.pdu_type
+
+mqtt.type
+
+mqtt.flags
+
+mqtt.qos
+
+mqtt.protocol_version
+
+mqtt.reason_code mqtt.connack.return_code
+
+mqtt.connect.flags
+
+mqtt.connect.clientid
+ NOOPT
+
+mqtt.connect.username
+ NOOPT
+
+mqtt.connect.password
+ NOOPT
+
+mqtt.connect.willtopic
+ NOOPT
+
+mqtt.connect.willmessage
+ NOOPT
+
+mqtt.connack.session_present
+
+mqtt.publish.topic
+ NOOPT
+
+mqtt.publish.message
+ NOOPT
+
+mqtt.subscribe.topic
+ NOOPT
+ STICKY_BUFFER
+
+mqtt.unsubscribe.topic
+ NOOPT
+ STICKY_BUFFER
+
+quic.version
+ NOOPT
+ STICKY_BUFFER
+
+quic.sni
+ NOOPT
+ STICKY_BUFFER
+
+quic.ua
+ NOOPT
+ STICKY_BUFFER
+
+quic.cyu.hash
+ NOOPT
+
+quic.cyu.string
+ NOOPT
+
+bypass
+ NOOPT
+
+prefilter
+ NOOPT
+
+compress_whitespace
+ NOOPT
+ TRANSFORM
+
+strip_whitespace
+ NOOPT
+ TRANSFORM
+
+strip_pseudo_headers
+ NOOPT
+ TRANSFORM
+
+to_md5
+ NOOPT
+ TRANSFORM
+
+to_sha1
+ NOOPT
+ TRANSFORM
+
+to_sha256
+ NOOPT
+ TRANSFORM
+
+dotprefix
+ NOOPT
+ TRANSFORM
+
+pcrexform
+ QUOTES_MANDATORY
+ TRANSFORM
+
+url_decode
+ NOOPT
+ TRANSFORM
+
+xor
+ QUOTES_MANDATORY
+ TRANSFORM
+
+header_lowercase
+ NOOPT
+ TRANSFORM
+
+to_lowercase
+ NOOPT
+ TRANSFORM
+
+to_uppercase
+ NOOPT
+ TRANSFORM
+
+ike.exchtype
+
+ike.init_spi
+ NOOPT
+ STICKY_BUFFER
+
+ike.resp_spi
+ NOOPT
+ STICKY_BUFFER
+
+ike.vendor
+ NOOPT
+ STICKY_BUFFER
+
+ike.chosen_sa_attribute
+
+ike.key_exchange_payload_length
+
+ike.nonce_payload_length
+
+ike.nonce_payload
+ NOOPT
+ STICKY_BUFFER
+
+ike.key_exchange_payload
+ NOOPT
+ STICKY_BUFFER
+
+ja4.hash ja4_hash
+ NOOPT
+ STICKY_BUFFER

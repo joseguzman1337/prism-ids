@@ -1,0 +1,67 @@
+[project]
+name = 'prism'
+authors = [
+    {name = 'Sensor Team', email = 'gianni_tedesco@rapid7.com'},
+]
+description = 'Detect regreSSHion attacks'
+readme = 'README.md'
+requires-python = '>=3.12'
+license = {text = 'MIT'}
+classifiers = [
+  'Programming Language :: Python'
+]
+
+dependencies = [
+ 'jinja2 >=3.1.5, <4.0',
+ 'typing_extensions',
+ 'orjson >=3.11.7, <4.0',
+]
+
+dynamic = ['version']
+
+[project.optional-dependencies]
+build = [
+    'setuptools',
+    'wheel',
+    'mypy',
+    'flake8-pyproject',
+    'build',
+    'twine',
+    'nose2',
+    'mypy',
+    'mypy-extensions',
+    'pycodestyle',
+    'pyflakes',
+    'setuptools_scm',
+    'coverage'
+]
+
+[project.scripts]
+prism = "prism.__main__:main"
+
+[build-system]
+requires = ['setuptools', 'wheel', 'setuptools_scm']
+build-backend = 'setuptools.build_meta'
+
+[tool.setuptools]
+packages = ['prism']
+
+[tool.setuptools.package-data]
+'prism' = ['py.typed']
+
+[tool.setuptools_scm]
+version_scheme = 'no-guess-dev'
+
+# requires the flake8-pyproject package
+[tool.flake8]
+exclude = [
+    'build',
+    'dist',
+    'test-service',
+    'venv',
+    '.req-venv'
+]
+
+[tool.mypy]
+strict = true
+packages = 'prism'

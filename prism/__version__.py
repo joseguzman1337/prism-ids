@@ -1,0 +1,8 @@
+__title__ = 'prism'
+__description__ = 'An optimizing suricata rule compiler'
+__url__ = 'https://github.com/rapid7/prism'
+__author__ = 'Gianni Tedesco'
+__author_email__ = ''
+__copyright__ = 'Copyright 2021 Rapid7'
+__license__ = 'MIT'
+__version__ = '0.3.3'

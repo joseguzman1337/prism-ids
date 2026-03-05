@@ -1,0 +1,313 @@
+name = "all"
+desc = "Try to match suricata"
+
+[[hooks]]
+name="tls_client"
+proto="tls"
+direction="client"
+bufs = [
+ "pkt_data",
+ "tls_sni",
+ "tls_certs",
+ "ja3_string",
+ "ja3_hash",
+]
+
+[[hooks]]
+name="tls_server"
+proto="tls"
+direction="server"
+bufs = [
+ "pkt_data",
+ "tls_cert_fingerprint",
+ "tls_cert_issuer",
+ "tls_cert_serial",
+ "tls_cert_subject",
+ "tls_certs",
+ "ja3s_string",
+ "ja3s_hash",
+]
+
+[[hooks]]
+name="http_request"
+proto="http"
+direction="client"
+bufs=[
+ "pkt_data",
+ "http_accept",
+ "http_accept_enc",
+ "http_accept_lang",
+ "http_connection",
+ "http_content_len",
+ "http_content_type",
+ "http_cookie",
+ "http_header",
+ "http_request_header",
+ "http_header_raw",
+ "http_header_names",
+ "http_host",
+ "http_host_raw",
+ "http_method",
+ "http_protocol",
+ "http_referer",
+ "http_request_body",
+ "http_request_line",
+ "http_start",
+ "http_uri",
+ "http_uri_raw",
+ "http_user_agent",
+ "file_data",
+]
+
+[[hooks]]
+name="http_response"
+proto="http"
+direction="server"
+bufs=[
+ "pkt_data",
+ "http_connection",
+ "http_content_len",
+ "http_content_type",
+ "http_cookie",
+ "http_header",
+ "http_response_header",
+ "http_header_raw",
+ "http_header_names",
+ "http_location",
+ "http_protocol",
+ "http_response_body",
+ "http_response_line",
+ "http_server",
+ "http_start",
+ "http_stat_code",
+ "http_stat_msg",
+ "file_data",
+]
+
+[[hooks]]
+name="http1_request"
+proto="http1"
+direction="client"
+bufs=[
+ "pkt_data",
+ "http_accept",
+ "http_accept_enc",
+ "http_accept_lang",
+ "http_connection",
+ "http_content_len",
+ "http_content_type",
+ "http_cookie",
+ "http_header",
+ "http_request_header",
+ "http_header_raw",
+ "http_header_names",
+ "http_host",
+ "http_host_raw",
+ "http_method",
+ "http_protocol",
+ "http_referer",
+ "http_request_body",
+ "http_request_line",
+ "http_start",
+ "http_uri",
+ "http_uri_raw",
+ "http_user_agent",
+ "file_data",
+]
+
+[[hooks]]
+name="http1_response"
+proto="http1"
+direction="server"
+bufs=[
+ "pkt_data",
+ "http_connection",
+ "http_content_len",
+ "http_content_type",
+ "http_cookie",
+ "http_header",
+ "http_response_header",
+ "http_header_raw",
+ "http_header_names",
+ "http_location",
+ "http_protocol",
+ "http_response_body",
+ "http_response_line",
+ "http_server",
+ "http_start",
+ "http_stat_code",
+ "http_stat_msg",
+ "file_data",
+]
+
+[[hooks]]
+name="tcp_client"
+proto="tcp"
+direction="client"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="tcp_server"
+proto="tcp"
+direction="server"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="tcp_pkt_client"
+proto="tcp-pkt"
+direction="client"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="tcp_pkt_server"
+proto="tcp-pkt"
+direction="server"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="udp_client"
+proto="udp"
+direction="client"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="udp_server"
+proto="udp"
+direction="server"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="dns_request"
+proto="dns"
+direction="client"
+bufs=[
+ "pkt_data",
+ "dns_query",
+]
+
+[[hooks]]
+name="smtp_client"
+proto="smtp"
+direction="client"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="smtp_server"
+proto="smtp"
+direction="server"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="ftp_client"
+proto="ftp"
+direction="client"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="ftp_server"
+proto="ftp"
+direction="server"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="ip_client"
+proto="ip"
+direction="client"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="ip_server"
+proto="ip"
+direction="server"
+bufs=[
+ "pkt_data",
+]
+
+[[hooks]]
+name="smb_client"
+proto="smb"
+direction="client"
+bufs=[
+ "pkt_data",
+ "smb_named_pipe",
+ "smb_ntlmssp_domain",
+ "smb_ntlmssp_user",
+ "smb_share",
+]
+
+[[hooks]]
+name="smb_server"
+proto="smb"
+direction="server"
+bufs=[
+ "pkt_data",
+ "smb_named_pipe",
+ "smb_ntlmssp_domain",
+ "smb_ntlmssp_user",
+ "smb_share",
+]
+
+[[hooks]]
+name="ssh_client"
+proto="ssh"
+direction="client"
+bufs=[
+ "pkt_data",
+ "ssh_hassh",
+ "ssh_hassh",
+ "ssh_hassh_string",
+ "ssh_proto",
+ "ssh_software",
+]
+
+[[hooks]]
+name="ssh_server"
+proto="ssh"
+direction="server"
+bufs=[
+ "pkt_data",
+ "ssh_hassh_server",
+ "ssh_hassh_server_string",
+ "ssh_proto",
+ "ssh_software",
+]
+
+[[hooks]]
+name="dcerpc_client"
+proto="dcerpc"
+direction="client"
+bufs=[
+ "pkt_data",
+ "dcerpc_stub_data",
+]
+
+[[hooks]]
+name="dcerpc_server"
+proto="dcerpc"
+direction="server"
+bufs=[
+ "pkt_data",
+ "dcerpc_stub_data",
+]
